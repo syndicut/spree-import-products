@@ -155,7 +155,11 @@ class ProductImport < ActiveRecord::Base
     # into the product (including images and taxonomies).
     # What this does is only assigns values to products if the product accepts that field.
     params_hash.each do |field, value|
-      product.send("#{field}=", value) if product.respond_to?("#{field}=")
+      if product.respond_to?("#{field}=")
+        product.send("#{field}=", value)
+      elsif property = Spree::Property.where(["name = ? OR presentation = ?", field, field]).first
+        product.product_properties.build :value => value, :property => property
+      end
     end
 
     after_product_built(product, params_hash)
