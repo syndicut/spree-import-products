@@ -13,7 +13,7 @@ module ImportProducts
         Rails.application.config.cache_classes ? require(c) : load(c)
       end
 
-      Spree::UserMailer.send(:include, ImportProducts::UserMailerExt)
+      UserMailer.send(:include, ImportProducts::UserMailerExt)
 
     end
 
