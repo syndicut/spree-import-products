@@ -1,4 +1,3 @@
-module Spree
   module Admin
     class ProductImportsController < BaseController
 
@@ -27,4 +26,3 @@ module Spree
       end
     end
   end
-end

@@ -3,7 +3,6 @@
 
 # Original Author:: Josh McArthur
 # License:: MIT
-module Spree
   class ProductError < StandardError; end;
   class ImportError < StandardError; end;
   class SkuError < StandardError; end;
@@ -410,6 +409,5 @@ module Spree
     def after_product_built(product, params_hash)
     end
   end
-end
 
 
