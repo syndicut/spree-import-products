@@ -18,7 +18,7 @@ module Spree
     cattr_accessor :settings
 
     def products
-      Spree::Product.where :id => product_ids
+      Product.where :id => product_ids
     end
 
     require 'csv'
@@ -87,19 +87,19 @@ module Spree
     def _import_data
       begin
         #Get products *before* import -
-        @products_before_import = Spree::Product.all
+        @products_before_import = Product.all
         @names_of_products_before_import = @products_before_import.map(&:name)
 
         rows = CSV.read(self.data_file.path)
 
-        if Spree::ProductImport.settings[:first_row_is_headings]
+        if ProductImport.settings[:first_row_is_headings]
           col = get_column_mappings(rows[0])
         else
-          col = Spree::ProductImport.settings[:column_mappings]
+          col = ProductImport.settings[:column_mappings]
         end
 
         log("Importing products for #{self.data_file_file_name} began at #{Time.now}")
-        rows[Spree::ProductImport.settings[:rows_to_skip]..-1].each do |row|
+        rows[ProductImport.settings[:rows_to_skip]..-1].each do |row|
 
           product_information = {}
 
@@ -118,11 +118,11 @@ module Spree
           product_information[:available_on] = Date.today - 1.day if product_information[:available_on].nil?
           log("#{pp product_information}")
 
-          variant_comparator_field = Spree::ProductImport.settings[:variant_comparator_field].try :to_sym
+          variant_comparator_field = ProductImport.settings[:variant_comparator_field].try :to_sym
           variant_comparator_column = col[variant_comparator_field]
 
-          if Spree::ProductImport.settings[:create_variants] and variant_comparator_column and
-            p = Spree::Product.where(variant_comparator_field => row[variant_comparator_column]).first
+          if ProductImport.settings[:create_variants] and variant_comparator_column and
+            p = Product.where(variant_comparator_field => row[variant_comparator_column]).first
 
             log("found product with this field #{variant_comparator_field}=#{row[variant_comparator_column]}")
             p.update_attribute(:deleted_at, nil) if p.deleted_at #Un-delete product if it is there
@@ -133,7 +133,7 @@ module Spree
           end
         end
 
-        if Spree::ProductImport.settings[:destroy_original_products]
+        if ProductImport.settings[:destroy_original_products]
           @products_before_import.each { |p| p.destroy }
         end
 
@@ -156,7 +156,7 @@ module Spree
       return if options[:with].nil?
 
       # Just update variant if exists
-      variant = Spree::Variant.find_by_sku(options[:with][:sku])
+      variant = Variant.find_by_sku(options[:with][:sku])
       raise SkuError, "SKU #{variant.sku} should belongs to #{product.inspect} but was #{variant.product.inspect}" if variant && variant.product != product
       if !variant
         variant = product.variants.new
@@ -165,7 +165,7 @@ module Spree
         options[:with].delete(:id)
       end
 
-      field = Spree::ProductImport.settings[:variant_comparator_field]
+      field = ProductImport.settings[:variant_comparator_field]
       log  "VARIANT:: #{variant.inspect}  /// #{options.inspect } /// #{options[:with][field]} /// #{field}"
 
       #Remap the options - oddly enough, Spree's product model has master_price and cost_price, while
@@ -175,11 +175,11 @@ module Spree
       #First, set the primitive fields on the object (prices, etc.)
       options[:with].each do |field, value|
         variant.send("#{field}=", value) if variant.respond_to?("#{field}=")
-        applicable_option_type = Spree::OptionType.find(:first, :conditions => [
+        applicable_option_type = OptionType.find(:first, :conditions => [
           "lower(presentation) = ? OR lower(name) = ?",
           field.to_s, field.to_s]
         )
-        if applicable_option_type.is_a?(Spree::OptionType)
+        if applicable_option_type.is_a?(OptionType)
           product.option_types << applicable_option_type unless product.option_types.include?(applicable_option_type)
           opt_value = applicable_option_type.option_values.where(["presentation = ? OR name = ?", value, value]).first
           opt_value = applicable_option_type.option_values.create(:presentation => value, :name => value) unless opt_value
@@ -193,12 +193,12 @@ module Spree
         variant.save
 
         #Associate our new variant with any new taxonomies
-        Spree::ProductImport.settings[:taxonomy_fields].each do |field|
+        ProductImport.settings[:taxonomy_fields].each do |field|
           associate_product_with_taxon(variant.product, field.to_s, options[:with][field.to_sym])
         end
 
         #Finally, attach any images that have been specified
-        Spree::ProductImport.settings[:image_fields].each do |field|
+        ProductImport.settings[:image_fields].each do |field|
           find_and_attach_image_to(variant, options[:with][field.to_sym])
         end
 
@@ -217,7 +217,7 @@ module Spree
     # product we have gathered, and creating the product and related objects.
     # It also logs throughout the method to try and give some indication of process.
     def create_product_using(params_hash)
-      product = Spree::Product.new
+      product = Product.new
 
       #The product is inclined to complain if we just dump all params
       # into the product (including images and taxonomies).
@@ -226,7 +226,7 @@ module Spree
       params_hash.each do |field, value|
         if product.respond_to?("#{field}=")
           product.send("#{field}=", value)
-        elsif property = Spree::Property.where(["name = ?", field]).first
+        elsif property = Property.where(["name = ?", field]).first
           product_property = product.product_properties.build :value => value
           product_property.property = property
         end
@@ -254,22 +254,22 @@ module Spree
 
 
         #Associate our new product with any taxonomies that we need to worry about
-        Spree::ProductImport.settings[:taxonomy_fields].each do |field|
+        ProductImport.settings[:taxonomy_fields].each do |field|
           associate_product_with_taxon(product, field.to_s, params_hash[field.to_sym])
         end
 
         #Finally, attach any images that have been specified
-        Spree::ProductImport.settings[:image_fields].each do |field|
+        ProductImport.settings[:image_fields].each do |field|
           find_and_attach_image_to(product, params_hash[field.to_sym])
         end
 
-        if Spree::ProductImport.settings[:multi_domain_importing] && product.respond_to?(:stores)
+        if ProductImport.settings[:multi_domain_importing] && product.respond_to?(:stores)
           begin
             store = Store.find(
               :first,
               :conditions => ["id = ? OR code = ?",
-                params_hash[Spree::ProductImport.settings[:store_field]],
-                params_hash[Spree::ProductImport.settings[:store_field]]
+                params_hash[ProductImport.settings[:store_field]],
+                params_hash[ProductImport.settings[:store_field]]
               ]
             )
 
@@ -309,7 +309,7 @@ module Spree
     #Message is string, severity symbol - either :info, :warn or :error
 
     def log(message, severity = :info)
-      @rake_log ||= ActiveSupport::BufferedLogger.new(Spree::ProductImport.settings[:log_to])
+      @rake_log ||= ActiveSupport::BufferedLogger.new(ProductImport.settings[:log_to])
       message = "[#{Time.now.to_s(:db)}] [#{severity.to_s.capitalize}] #{message}\n"
       @rake_log.send severity, message
       puts message
@@ -327,7 +327,7 @@ module Spree
       #The image can be fetched from an HTTP or local source - either method returns a Tempfile
       file = filename =~ /\Ahttp[s]*:\/\// ? fetch_remote_image(filename) : fetch_local_image(filename)
       #An image has an attachment (the image file) and some object which 'views' it
-      product_image = Spree::Image.new({:attachment => file,
+      product_image = Image.new({:attachment => file,
                                 :viewable => product_or_variant,
                                 :position => product_or_variant.images.length
                                 })
@@ -339,7 +339,7 @@ module Spree
     # images, and the file is accessible to the script.
     # It is basically just a wrapper around basic File IO methods.
     def fetch_local_image(filename)
-      filename = Spree::ProductImport.settings[:product_image_path] + filename
+      filename = ProductImport.settings[:product_image_path] + filename
       unless File.exists?(filename) && File.readable?(filename)
         log("Image #{filename} was not found on the server, so this image was not imported.", :warn)
         return nil
@@ -381,8 +381,8 @@ module Spree
       #Using find_or_create_by_name is more elegant, but our magical params code automatically downcases
       # the taxonomy name, so unless we are using MySQL, this isn't going to work.
       taxonomy_name = taxonomy
-      taxonomy = Spree::Taxonomy.find(:first, :conditions => ["lower(name) = ?", taxonomy])
-      taxonomy = Spree::Taxonomy.create(:name => taxonomy_name.capitalize) if taxonomy.nil? && Spree::ProductImport.settings[:create_missing_taxonomies]
+      taxonomy = Taxonomy.find(:first, :conditions => ["lower(name) = ?", taxonomy])
+      taxonomy = Taxonomy.create(:name => taxonomy_name.capitalize) if taxonomy.nil? && ProductImport.settings[:create_missing_taxonomies]
 
       taxon_hierarchy.split(/\s*\&\s*/).each do |hierarchy|
         hierarchy = hierarchy.split(/\s*>\s*/)

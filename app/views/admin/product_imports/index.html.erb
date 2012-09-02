@@ -24,7 +24,7 @@
     <th>Products imported</th>
     <th>Actions</th>
   </tr>
-  <% Spree::ProductImport.order("created_at DESC").all.each do |import| %>
+  <% ProductImport.order("created_at DESC").all.each do |import| %>
     <tr>
       <td><%= time_ago_in_words import.created_at, true -%> ago</td>
       <td><%= import.data_file_file_name -%></td>
