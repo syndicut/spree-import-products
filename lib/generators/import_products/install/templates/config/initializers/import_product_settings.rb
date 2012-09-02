@@ -2,7 +2,7 @@
 
 # This file is the thing you have to config to match your application
 
-Spree::ProductImport.settings = {
+ProductImport.settings = {
   :column_mappings => { #Change these for manual mapping of product fields to the CSV file
     :sku => 0,
     :name => 1,
