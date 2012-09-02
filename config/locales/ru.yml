@@ -1,0 +1,17 @@
+en:
+    product_import_processing: 'Спасибо, ващ запрос был поставлен в очередь на обработку. Вы получите электронное письмо с подтверждением после того, как он будет выполнен.'
+    product_imports: 'Импорт товаров'
+    delete_product_import: "Удалить"
+    delete_product_import_successful: "Импорт и связанные товары успешно удалены"
+    confirm_delete_product_import: "Удаление этого импорта удалит все связанные товары, вы уверены?"
+    product_import:
+      state:
+        created: "Создан"
+        started: "Обрабатывается"
+        completed: "Завершен"
+        failed: "Ошибка"
+    form:
+        product_import:
+            heading: 'Импорт товаров из CSV'
+            new:
+                data_file: "Файл с товарами"
